@@ -124,6 +124,64 @@ class _ReaderScaffoldState extends State<_ReaderScaffold> {
     setState(() {});
   }
 
+  // ========== NEW: 设备指纹重置方法 ==========
+  void _resetDeviceInfo() async {
+    try {
+      var source = ComicSource.find(context.reader.type.sourceKey);
+      if (source == null) {
+        showToast(message: "Comic source not found".tl, context: context);
+        return;
+      }
+
+      // 删除拷贝漫画的设备信息键
+      source.data.remove("_deviceinfo");
+      source.data.remove("_device");
+      source.data.remove("_pseudoid");
+      await source.saveData();
+
+      Log.info("Reader", "Device info reset for source: ${source.key}");
+      showToast(
+        message: "Device info reset. New fingerprint will be generated on next request.".tl,
+        context: context,
+        seconds: 2,
+      );
+    } catch (e, s) {
+      Log.error("Reader", "Failed to reset device info: $e", s);
+      showToast(
+        message: "Failed to reset: $e".tl,
+        context: context,
+        seconds: 2,
+      );
+    }
+  }
+
+  Widget _buildDeviceResetButton() {
+    return Positioned(
+      top: context.padding.top + 56 + 8,
+      right: 16,
+      child: Material(
+        color: context.colorScheme.primaryContainer.withOpacity(0.85),
+        borderRadius: BorderRadius.circular(20),
+        elevation: 2,
+        child: InkWell(
+          onTap: _resetDeviceInfo,
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            width: 40,
+            height: 40,
+            alignment: Alignment.center,
+            child: Icon(
+              Icons.phonelink_erase,
+              size: 20,
+              color: context.colorScheme.onPrimaryContainer,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+  // ========== END NEW ==========
+
   @override
   Widget build(BuildContext context) {
     final isOnChapterCommentsPage = context.reader.isOnChapterCommentsPage;
@@ -139,6 +197,10 @@ class _ReaderScaffoldState extends State<_ReaderScaffold> {
           buildPageInfoText(),
         if (!isOnChapterCommentsPage)
           buildStatusInfo(),
+        // ========== NEW: 设备指纹重置悬浮按钮 ==========
+        if (context.reader.type.sourceKey == 'copy_manga' && !isOnChapterCommentsPage)
+          _buildDeviceResetButton(),
+        // ========== END NEW ==========
         AnimatedPositioned(
           duration: const Duration(milliseconds: 180),
           right: 16,
@@ -623,7 +685,7 @@ class _ReaderScaffoldState extends State<_ReaderScaffold> {
               foreground: Paint()
                 ..style = PaintingStyle.stroke
                 ..strokeWidth = 1.4
-                ..color = context.colorScheme.onInverseSurface,
+                ..color: context.colorScheme.onInverseSurface,
             ),
           ),
           Text(text),
